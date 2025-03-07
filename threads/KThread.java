@@ -433,8 +433,44 @@ public class KThread {
 	public static void selfTest() {
 		Lib.debug(dbgThread, "Enter KThread.selfTest");
 
-		new KThread(new PingTest(1)).setName("forked thread").fork();
-		new PingTest(0).run();
+		// new KThread(new PingTest(1)).setName("forked thread").fork();
+		// new PingTest(0).run();
+
+		// Test 1: Basic join functionality
+		KThread thread1 = new KThread(new Runnable() {
+			public void run() {
+				System.out.println("Thread 1: Starting");
+				for (int i = 0; i < 3; i++) {
+					System.out.println("Thread 1: Working...");
+					KThread.yield();
+				}
+				System.out.println("Thread 1: Finished");
+			}
+		}).setName("Thread 1");
+
+		KThread thread2 = new KThread(new Runnable() {
+			public void run() {
+				System.out.println("Thread 2: Starting");
+				System.out.println("Thread 2: Joining Thread 1");
+				thread1.join(); // Wait for Thread 1 to finish
+				System.out.println("Thread 2: Resuming after join");
+				for (int i = 0; i < 3; i++) {
+					System.out.println("Thread 2: Working...");
+					KThread.yield();
+				}
+				System.out.println("Thread 2: Finished");
+			}
+		}).setName("Thread 2");
+
+		// Start the threads
+		thread1.fork();
+		thread2.fork();
+
+		// Wait for both threads to finish
+		thread1.join();
+		thread2.join();
+
+		System.out.println("Join test completed.");
 	}
 
 	private static final char dbgThread = 't';
