@@ -1,7 +1,13 @@
 package nachos.threads;
 
-import java.io.ObjectInputFilter.Config;
-import java.nio.file.FileSystem;
+// import java.io.ObjectInputFilter.Config;
+// import java.nio.file.FileSystem;
+ import nachos.machine.Config;
+
+import nachos.machine.FileSystem;
+//import nachos.threads.Condition2;
+import nachos.machine.Machine;
+import nachos.machine.Lib;
 
 import nachos.machine.*;
 
@@ -50,13 +56,13 @@ public class ThreadedKernel extends Kernel {
 	 */
 	public void selfTest() {
 		KThread.selfTest();
-		//Semaphore.selfTest();
+		// Semaphore.selfTest();
 		Condition2.selfTest();
 		SynchList.selfTest();
 		Alarm.selfTest();
 
 		if (Machine.bank() != null) {
-			ElevatorBank.selfTest();
+		ElevatorBank.selfTest();
 		}
 	}
 
