@@ -5,6 +5,15 @@ import nachos.ag.BoatGrader;
 public class Boat {
 	static BoatGrader bg;
 
+	//new implementation
+	private static int adultsOahu;
+    private static int childrenOahu;
+    private static int adultsMolokai = 0;
+    private static int childrenMolokai = 0;
+    private static boolean boatOnOahu = true;
+    private static final Object lock = new Object();
+	//end 
+
 	public static void selfTest() {
 		BoatGrader b = new BoatGrader();
 
@@ -28,6 +37,25 @@ public class Boat {
 		// Create threads here. See section 3.4 of the Nachos for Java
 		// Walkthrough linked from the projects page.
 
+
+		//New implementation
+		adultsOahu = adults;
+        childrenOahu = children;
+
+        for (int i = 0; i < adults; i++) {
+            KThread adultThread = new KThread(Boat::AdultItinerary);
+            adultThread.setName("Adult Thread " + i);
+            adultThread.fork();
+        }
+
+        for (int i = 0; i < children; i++) {
+            KThread childThread = new KThread(Boat::ChildItinerary);
+            childThread.setName("Child Thread " + i);
+            childThread.fork();
+        }
+		//end
+
+
 		Runnable r = new Runnable() {
 			public void run() {
 				SampleItinerary();
@@ -46,9 +74,90 @@ public class Boat {
 		 * 		bg.AdultRowToMolokai(); 
 		 * indicates that an adult has rowed the boat across to Molokai
 		 */
+
+		//new implementation
+
+		while (true) {
+            synchronized (lock) {
+                while (!boatOnOahu || childrenOahu > 0) {
+                    try {
+                        lock.wait();
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                }
+                boatOnOahu = false;
+                adultsOahu--;
+                adultsMolokai++;
+                bg.AdultRowToMolokai();
+                lock.notifyAll();
+            }
+
+            synchronized (lock) {
+                while (boatOnOahu) {
+                    try {
+                        lock.wait();
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                }
+                boatOnOahu = true;
+                adultsMolokai--;
+                adultsOahu++;
+                bg.AdultRowToOahu();
+                lock.notifyAll();
+            }
+        }
+
+		//end
+
 	}
 
 	static void ChildItinerary() {
+		
+		//new implementation
+		while (true) {
+            synchronized (lock) {
+                if (boatOnOahu) {
+                    if (childrenOahu >= 2) {
+                        childrenOahu -= 2;
+                        childrenMolokai += 2;
+                        boatOnOahu = false;
+                        bg.ChildRowToMolokai();
+                        bg.ChildRideToMolokai();
+                        lock.notifyAll();
+                    } else if (childrenOahu >= 1) {
+                        if (adultsOahu == 0 && childrenOahu == 1 && adultsMolokai == 0) {
+                            childrenOahu--;
+                            childrenMolokai++;
+                            boatOnOahu = false;
+                            bg.ChildRowToMolokai();
+                            lock.notifyAll();
+                        } else {
+                            childrenOahu--;
+                            childrenMolokai++;
+                            boatOnOahu = false;
+                            bg.ChildRowToMolokai();
+                            lock.notifyAll();
+                        }
+                    }
+                } else {
+                    childrenMolokai--;
+                    childrenOahu++;
+                    boatOnOahu = true;
+                    bg.ChildRowToOahu();
+                    lock.notifyAll();
+                }
+
+                try {
+                    lock.wait();
+                } catch (InterruptedException e) {
+                    return;
+                }
+            }
+        }
+
+		//end
 	}
 
 	static void SampleItinerary() {
