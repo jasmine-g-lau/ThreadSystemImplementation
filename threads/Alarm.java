@@ -22,22 +22,23 @@ public class Alarm {
 		Machine.timer().setInterruptHandler(new Runnable() {
 			public void run() {
 				timerInterrupt();
-				
+
 			}
 		});
 	}
 
-	private static class waitingThread implements Comparable<waitingThread>{
+	private static class waitingThread implements Comparable<waitingThread> {
 		long wakeUpTime;
 		KThread sleeper;
 
-		waitingThread(long wakeUpTime, KThread sleeper){
+		waitingThread(long wakeUpTime, KThread sleeper) {
 			this.wakeUpTime = wakeUpTime;
 			this.sleeper = sleeper;
 		}
 
-		public int compareTo(waitingThread other){
-			return Long.compare(this.wakeUpTime, other.wakeUpTime);
+		public int compareTo(waitingThread other) {
+			return (this.wakeUpTime < other.wakeUpTime) ? -1 : (this.wakeUpTime == other.wakeUpTime ? 0 : 1);
+
 		}
 	}
 
@@ -50,13 +51,13 @@ public class Alarm {
 	public void timerInterrupt() {
 		boolean intStatus = Machine.interrupt().disable();
 		long currentTime = Machine.timer().getTime();
-		
+
 		while (!waitQueue.isEmpty() && waitQueue.peek().wakeUpTime <= currentTime) {
 			waitingThread sleeper = waitQueue.poll();
 			KThread thread = sleeper.sleeper;
 			thread.ready();
 		}
-		
+
 		KThread.currentThread().yield();
 	}
 
@@ -74,7 +75,7 @@ public class Alarm {
 	 */
 	public void waitUntil(long x) {
 		// for now, cheat just to get something working (busy waiting is bad)
-		if (x <= 0){
+		if (x <= 0) {
 			return;
 		}
 		long wakeUpTime = Machine.timer().getTime() + x;
@@ -91,20 +92,21 @@ public class Alarm {
 
 	// Add Alarm testing code to the Alarm class
 	public static void alarmTest1() {
-			int durations[] = {1000, 10*1000, 100*1000};
-			long t0, t1;
-			for (int d : durations) {
-				t0 = Machine.timer().getTime();
-				ThreadedKernel.alarm.waitUntil (d);
-				t1 = Machine.timer().getTime();
-				System.out.println ("alarmTest1: waited for " + (t1 - t0) + " ticks");
-			}
+		int durations[] = { 1000, 10 * 1000, 100 * 1000 };
+		long t0, t1;
+		for (int d : durations) {
+			t0 = Machine.timer().getTime();
+			ThreadedKernel.alarm.waitUntil(d);
+			t1 = Machine.timer().getTime();
+			System.out.println("alarmTest1: waited for " + (t1 - t0) + " ticks");
 		}
-		// Implement more test methods here ...
-		// Invoke Alarm.selfTest() from ThreadedKernel.selfTest()
-		public static void selfTest() {
-			alarmTest1();
+	}
+
+	// Implement more test methods here ...
+	// Invoke Alarm.selfTest() from ThreadedKernel.selfTest()
+	public static void selfTest() {
+		alarmTest1();
 		// Invoke your other test methods here ...
-		}
-	
+	}
+
 }

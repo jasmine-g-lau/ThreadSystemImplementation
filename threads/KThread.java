@@ -437,7 +437,7 @@ public class KThread {
 		// new PingTest(0).run();
 
 		// Test 1: Basic join functionality
-		KThread thread1 = new KThread(new Runnable() {
+		final KThread thread1 = new KThread(new Runnable() {
 			public void run() {
 				System.out.println("Thread 1: Starting");
 				for (int i = 0; i < 3; i++) {
@@ -448,7 +448,7 @@ public class KThread {
 			}
 		}).setName("Thread 1");
 
-		KThread thread2 = new KThread(new Runnable() {
+		final KThread thread2 = new KThread(new Runnable() {
 			public void run() {
 				System.out.println("Thread 2: Starting");
 				System.out.println("Thread 2: Joining Thread 1");

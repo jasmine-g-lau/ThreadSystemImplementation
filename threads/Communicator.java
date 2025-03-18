@@ -1,5 +1,8 @@
 package nachos.threads;
 
+import nachos.threads.Lock;
+import nachos.threads.Condition;
+
 import nachos.machine.*;
 
 /**
@@ -18,54 +21,55 @@ public class Communicator {
     private int waitingListeners;
     private int waitingSpeakers;
 
-	/**
-	 * Allocate a new communicator.
-	 */
-	public Communicator() { //default values
+    /**
+     * Allocate a new communicator.
+     */
+    public Communicator() { // default values
         lock = new Lock();
         speakerWaiting = new Condition(lock);
         listenerWaiting = new Condition(lock);
         messageReady = false;
         waitingListeners = 0;
         waitingSpeakers = 0;
-	}
+    }
 
-	/**
-	 * Wait for a thread to listen through this communicator, and then transfer
-	 * <i>word</i> to the listener.
-	 * 
-	 * <p>
-	 * Does not return until this thread is paired up with a listening thread.
-	 * Exactly one listener should receive <i>word</i>.
-	 * 
-	 * @param word the integer to transfer.
-	 */
-	public void speak(int word) {
-        lock.acquire();                                 // Current speaker acquires lock so that no other thread can access resources
-        waitingSpeakers++;                              // Adds new current speaker to wait to speak
+    /**
+     * Wait for a thread to listen through this communicator, and then transfer
+     * <i>word</i> to the listener.
+     * 
+     * <p>
+     * Does not return until this thread is paired up with a listening thread.
+     * Exactly one listener should receive <i>word</i>.
+     * 
+     * @param word the integer to transfer.
+     */
+    public void speak(int word) {
+        lock.acquire(); // Current speaker acquires lock so that no other thread can access resources
+        waitingSpeakers++; // Adds new current speaker to wait to speak
 
-        while (messageReady || waitingListeners == 0) { // Make speaker wait until there is a listener ready to consume the message 
-            speakerWaiting.sleep();                     // or until the previous listener is finished listening
+        while (messageReady || waitingListeners == 0) { // Make speaker wait until there is a listener ready to consume
+                                                        // the message
+            speakerWaiting.sleep(); // or until the previous listener is finished listening
         }
 
         // Transfer the message
-        message = word;                                 // Accepting the message
-        messageReady = true;                            // Flagging that there is now a message to be listened to
-        waitingSpeakers--;                              // There is no longer a speaker waiting
+        message = word; // Accepting the message
+        messageReady = true; // Flagging that there is now a message to be listened to
+        waitingSpeakers--; // There is no longer a speaker waiting
 
         // Wake up a listener to receive the message
         listenerWaiting.wake();
 
         lock.release();
-	}
+    }
 
-	/**
-	 * Wait for a thread to speak through this communicator, and then return the
-	 * <i>word</i> that thread passed to <tt>speak()</tt>.
-	 * 
-	 * @return the integer transferred.
-	 */
-	public int listen() {
+    /**
+     * Wait for a thread to speak through this communicator, and then return the
+     * <i>word</i> that thread passed to <tt>speak()</tt>.
+     * 
+     * @return the integer transferred.
+     */
+    public int listen() {
         lock.acquire();
         waitingListeners++;
 
@@ -81,44 +85,64 @@ public class Communicator {
 
         lock.release();
         return temp;
-	}
+    }
 
     public static void testMultipleSpeakersBeforeListeners() {
         System.out.println("TESTING COMMUNICATOR");
-        Communicator communicator = new Communicator();
-    
-        KThread speaker1 = new KThread(() -> communicator.speak(1));
-        System.out.println("speaker1 spoke");
-        KThread speaker2 = new KThread(() -> communicator.speak(2));
-        System.out.println("speaker2 spoke");
-        KThread speaker3 = new KThread(() -> communicator.speak(3));
-        System.out.println("speaker3 spoke");
-    
-        KThread listener1 = new KThread(() -> {
-            int received = communicator.listen();
-            System.out.println("Listener 1 received: " + received);
+        final Communicator communicator = new Communicator();
+
+        KThread speaker1 = new KThread(new Runnable() {
+            public void run() {
+                communicator.speak(1);
+                System.out.println("speaker1 spoke");
+            }
         });
-    
-        KThread listener2 = new KThread(() -> {
-            int received = communicator.listen();
-            System.out.println("Listener 2 received: " + received);
+
+        KThread speaker2 = new KThread(new Runnable() {
+            public void run() {
+                communicator.speak(2);
+                System.out.println("speaker2 spoke");
+            }
         });
-    
-        KThread listener3 = new KThread(() -> {
-            int received = communicator.listen();
-            System.out.println("Listener 3 received: " + received);
+
+        KThread speaker3 = new KThread(new Runnable() {
+            public void run() {
+                communicator.speak(3);
+                System.out.println("speaker3 spoke");
+            }
         });
-    
+
+        KThread listener1 = new KThread(new Runnable() {
+            public void run() {
+                int received = communicator.listen();
+                System.out.println("Listener 1 received: " + received);
+            }
+        });
+
+        KThread listener2 = new KThread(new Runnable() {
+            public void run() {
+                int received = communicator.listen();
+                System.out.println("Listener 2 received: " + received);
+            }
+        });
+
+        KThread listener3 = new KThread(new Runnable() {
+            public void run() {
+                int received = communicator.listen();
+                System.out.println("Listener 3 received: " + received);
+            }
+        });
+
         speaker1.fork();
         speaker2.fork();
         speaker3.fork();
-    
+
         ThreadedKernel.alarm.waitUntil(2000); // Simulate delay for listeners
-    
+
         listener1.fork();
         listener2.fork();
         listener3.fork();
-    
+
         speaker1.join();
         speaker2.join();
         speaker3.join();
