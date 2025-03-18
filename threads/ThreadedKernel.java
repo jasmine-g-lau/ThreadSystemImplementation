@@ -1,15 +1,12 @@
 package nachos.threads;
 
+import nachos.machine.Lib;
 // import java.io.ObjectInputFilter.Config;
 // import java.nio.file.FileSystem;
- import nachos.machine.Config;
-
-import nachos.machine.FileSystem;
 //import nachos.threads.Condition2;
-import nachos.machine.Machine;
-import nachos.machine.Lib;
-
 import nachos.machine.*;
+
+import nachos.threads.CommSelfTester;
 
 /**
  * A multi-threaded OS kernel.
@@ -60,6 +57,11 @@ public class ThreadedKernel extends Kernel {
 		Condition2.selfTest();
 		SynchList.selfTest();
 		Alarm.selfTest();
+		CommSelfTester.selfTest1();
+		CommSelfTester.selfTest2();
+		CommSelfTester.selfTest3();
+		CommSelfTester.selfTest4();
+		CommSelfTester.selfTest5();
 
 		if (Machine.bank() != null) {
 		ElevatorBank.selfTest();
