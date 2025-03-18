@@ -1,18 +1,10 @@
 package nachos.threads;
 
 import nachos.ag.BoatGrader;
+import nachos.machine.Machine;
 
 public class Boat {
     static BoatGrader bg;
-
-    // new implementation
-    private static int adultsOahu;
-    private static int childrenOahu;
-    private static int adultsMolokai = 0;
-    private static int childrenMolokai = 0;
-    private static boolean boatOnOahu = true;
-    private static final Object lock = new Object();
-    // end
 
     public static void selfTest() {
         BoatGrader b = new BoatGrader();
@@ -27,147 +19,189 @@ public class Boat {
         // begin(3, 3, b);
     }
 
+
+    private static Lock lockBoat; //new
+    private static Lock lockPopulation; //new
+
+    private static Condition populationControl; //new
+    private static Condition boatControl; //new
+
+    private static int adultsOnOahu; //new
+    private static int childrenOnOahu; //new
+    private static int boatCap; //new
+
+
+    private static boolean boatOnOahu; //new
+    private static boolean done; //new
+    private static boolean temp; //new
+
+
     public static void begin(int adults, int children, BoatGrader b) {
         // Store the externally generated autograder in a class
         // variable to be accessible by children.
         bg = b;
-
+        
         // Instantiate global variables here
 
         // Create threads here. See section 3.4 of the Nachos for Java
         // Walkthrough linked from the projects page.
 
-        // New implementation
-        adultsOahu = adults;
-        childrenOahu = children;
+        lockPopulation = new Lock();
+		lockBoat = new Lock();
+        populationControl = new Condition(lockPopulation);
+        boatControl = new Condition(lockBoat);
+        adultsOnOahu = adults;
+        childrenOnOahu = children;
+        boatOnOahu = true;
 
-        for (int i = 0; i < adults; i++) {
-            KThread adultThread = new KThread(new Runnable() {
-                public void run() {
-                    Boat.AdultItinerary();
-                }
-            });
+        Runnable AdultThread = new Runnable() {
+			public void run() {
+				AdultItinerary();
+			}
+		};
+		Runnable ChildThread = new Runnable() {
+			public void run() {
+				ChildItinerary();
+			}
+		};
 
-            adultThread.setName("Adult Thread " + i);
-            adultThread.fork();
+        boolean intStatus = Machine.interrupt().disable();
+
+        for (int i = 0; i < adults; ++i) {
+			KThread threadA = new KThread(AdultThread);
+			threadA.fork();
+		}
+
+		for (int i = 0; i < children; ++i) {
+			KThread threadC = new KThread(ChildThread);
+			threadC.fork();
+		}
+
+        Machine.interrupt().restore(intStatus);
+
+		while (!done){
+			KThread.yield();
         }
-
-        for (int i = 0; i < children; i++) {
-            KThread childThread = new KThread(new Runnable() {
-                public void run() {
-                    Boat.ChildItinerary();
-                }
-            });
-
-            childThread.setName("Child Thread " + i);
-            childThread.fork();
-        }
-        // end
-
-        Runnable r = new Runnable() {
-            public void run() {
-                SampleItinerary();
-            }
-        };
-        KThread t = new KThread(r);
-        t.setName("Sample Boat Thread");
-        t.fork();
-
     }
 
-    static void AdultItinerary() {
+
+
+    private static void AdultItinerary() {
         /*
          * This is where you should put your solutions. Make calls to the
          * BoatGrader to show that it is synchronized. For example:
          * bg.AdultRowToMolokai();
          * indicates that an adult has rowed the boat across to Molokai
          */
+        boatOnOahu = true;
+        temp = true;
 
-        // new implementation
+        lockPopulation.acquire();
+        adultsOnOahu++;
+        populationControl.sleep();
+        lockPopulation.release();
 
-        while (true) {
-            synchronized (lock) {
-                while (!boatOnOahu || childrenOahu > 0) {
-                    try {
-                        lock.wait();
-                    } catch (InterruptedException e) {
-                        return;
-                    }
-                }
-                boatOnOahu = false;
-                adultsOahu--;
-                adultsMolokai++;
+        KThread.yield();
+
+
+        while(!done){
+            lockBoat.acquire();
+
+            if (boatOnOahu && temp && boatCap == 0 && childrenOnOahu == 0 && !done){
                 bg.AdultRowToMolokai();
-                lock.notifyAll();
-            }
 
-            synchronized (lock) {
-                while (boatOnOahu) {
-                    try {
-                        lock.wait();
-                    } catch (InterruptedException e) {
-                        return;
-                    }
+                lockPopulation.acquire();
+                adultsOnOahu--;
+                lockPopulation.release();
+
+                temp = false;
+                boatOnOahu = false;
+
+                if ((adultsOnOahu + childrenOnOahu) == 0){
+                    done = true;
+                    boatControl.wakeAll();
                 }
-                boatOnOahu = true;
-                adultsMolokai--;
-                adultsOahu++;
-                bg.AdultRowToOahu();
-                lock.notifyAll();
             }
+
+            else if (!temp && !done){
+                boatControl.sleep();
+            }
+
+            lockBoat.release();
         }
-
-        // end
-
+        
     }
 
-    static void ChildItinerary() {
 
-        // new implementation
-        while (true) {
-            synchronized (lock) {
-                if (boatOnOahu) {
-                    if (childrenOahu >= 2) {
-                        childrenOahu -= 2;
-                        childrenMolokai += 2;
-                        boatOnOahu = false;
-                        bg.ChildRowToMolokai();
+
+
+
+    private static void ChildItinerary() {
+        temp = true;
+
+        lockPopulation.acquire();
+        childrenOnOahu++;
+        lockPopulation.release();
+
+        while(!done){
+            lockBoat.acquire();
+
+            if (temp && boatOnOahu && boatCap < 2 && !done){
+                boatCap++;
+                
+                lockPopulation.acquire();
+                childrenOnOahu--;
+                lockPopulation.release();
+
+                temp = false;
+
+                if ((adultsOnOahu + childrenOnOahu) == 0) {
+                    bg.ChildRowToMolokai();
+                    if (boatCap == 2) {
                         bg.ChildRideToMolokai();
-                        lock.notifyAll();
-                    } else if (childrenOahu >= 1) {
-                        if (adultsOahu == 0 && childrenOahu == 1 && adultsMolokai == 0) {
-                            childrenOahu--;
-                            childrenMolokai++;
-                            boatOnOahu = false;
-                            bg.ChildRowToMolokai();
-                            lock.notifyAll();
-                        } else {
-                            childrenOahu--;
-                            childrenMolokai++;
-                            boatOnOahu = false;
-                            bg.ChildRowToMolokai();
-                            lock.notifyAll();
-                        }
                     }
-                } else {
-                    childrenMolokai--;
-                    childrenOahu++;
-                    boatOnOahu = true;
-                    bg.ChildRowToOahu();
-                    lock.notifyAll();
+                    boatCap = 0;
+                    boatOnOahu = false;
+                    done = true;
+                    boatControl.wakeAll();
                 }
 
-                try {
-                    lock.wait();
-                } catch (InterruptedException e) {
-                    return;
+                else if (boatCap == 2) {
+                    bg.ChildRowToMolokai();
+                    bg.ChildRideToMolokai();
+                    boatCap = 0;
+                    boatOnOahu = false;
                 }
+
+                else if (childrenOnOahu == 0) {
+                    boatCap--;
+                    lockPopulation.acquire();
+                    childrenOnOahu++;
+                    lockPopulation.release();
+                    temp = true;
+                }
+
+                else if (!boatOnOahu && !temp && boatCap < 2 && !done) {
+                    bg.ChildRowToOahu();
+                    temp = true;
+                    lockPopulation.acquire();
+                    childrenOnOahu++;
+                    lockPopulation.release();
+                    boatOnOahu = true;
+                }
+
+                lockBoat.release();
+                if(!done){
+                    KThread.yield();
+                }
+
             }
         }
-
-        // end
     }
 
+
+
+    
     static void SampleItinerary() {
         // Please note that this isn't a valid solution (you can't fit
         // all of them on the boat). Please also note that you may not
