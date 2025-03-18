@@ -12,17 +12,20 @@ public class Boat {
         // System.out.println("\n ***Testing Boats with only 2 children***");
         // begin(0, 2, b);
 
-        System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
-        begin(1, 2, b);
+        // System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
+        // begin(1, 2, b);
 
         // System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
         // begin(3, 3, b);
+
+        System.out.println("\n ***Testing Boats with 3 children, 100 adults***");
+        begin(3, 99, b);
     }
 
     private static Lock lockBoat;
     private static Lock lockPopulation;
 
-    private static Condition2 boatControl;
+    private static Condition2 boatControl; //Not using Condition
 
     private static int adultsOnOahu;
     private static int childrenOnOahu;
@@ -76,6 +79,9 @@ public class Boat {
         }
 
         System.out.println("All adults and children have successfully crossed to Molokai!");
+        System.out.println("Final State:");
+        System.out.println("Adults on Oahu: " + adultsOnOahu);       // Output final counts
+        System.out.println("Children on Oahu: " + childrenOnOahu);     // Output final counts
     }
 
 
@@ -90,7 +96,7 @@ public class Boat {
         while (!done) {
             lockBoat.acquire();
 
-            if (boatOnOahu && boatCap == 0 && childrenOnOahu == 0 && !done) {
+            if (boatOnOahu && boatCap == 0 && childrenOnOahu < 2 && !done && adultsOnOahu != 0) {
                 bg.AdultRowToMolokai();
 
                 lockPopulation.acquire();
@@ -99,7 +105,7 @@ public class Boat {
 
                 boatOnOahu = false;
 
-                if ((adultsOnOahu + childrenOnOahu) == 0) {
+                if (adultsOnOahu == 0 && childrenOnOahu == 0) {
                     done = true;
                     boatControl.wakeAll();
                 }
@@ -138,7 +144,7 @@ public class Boat {
                         done = true;
                     }
                     boatControl.wakeAll();
-                } else if (childrenOnOahu >0 && boatCap == 1 && !boatOnOahu ) {
+                } else if (childrenOnOahu > 0 && boatCap == 1 && !boatOnOahu ) {
                     bg.ChildRowToOahu();
                     boatOnOahu = true;
 					boatCap = 0;
