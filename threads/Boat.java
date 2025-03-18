@@ -22,7 +22,7 @@ public class Boat {
     private static Lock lockBoat;
     private static Lock lockPopulation;
 
-    private static Condition boatControl;
+    private static Condition2 boatControl;
 
     private static int adultsOnOahu;
     private static int childrenOnOahu;
@@ -37,7 +37,7 @@ public class Boat {
 
         lockPopulation = new Lock();
         lockBoat = new Lock();
-        boatControl = new Condition(lockBoat);
+        boatControl = new Condition2(lockBoat);
         adultsOnOahu = 0;
         childrenOnOahu = 0;
         boatOnOahu = true;
@@ -75,7 +75,7 @@ public class Boat {
             KThread.yield();
         }
 
-	System.out.println("All adults and children have successfully crossed to Molokai!");
+        System.out.println("All adults and children have successfully crossed to Molokai!");
     }
 
 
