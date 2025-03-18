@@ -74,6 +74,8 @@ public class Boat {
         while (!done) {
             KThread.yield();
         }
+
+	System.out.println("All adults and children have successfully crossed to Molokai!");
     }
 
 
