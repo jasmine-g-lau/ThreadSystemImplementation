@@ -59,6 +59,7 @@ public class Alarm {
 		}
 
 		KThread.currentThread().yield();
+		Machine.interrupt().restore(intStatus);
 	}
 
 	/**

@@ -2,6 +2,12 @@ package nachos.threads;
 
 // import java.io.ObjectInputFilter.Config;
 // import java.nio.file.FileSystem;
+ import nachos.machine.Config;
+
+import nachos.machine.FileSystem;
+//import nachos.threads.Condition2;
+import nachos.machine.Machine;
+import nachos.machine.Lib;
 
 import nachos.machine.*;
 
@@ -56,7 +62,7 @@ public class ThreadedKernel extends Kernel {
 		Alarm.selfTest();
 
 		if (Machine.bank() != null) {
-			ElevatorBank.selfTest();
+		ElevatorBank.selfTest();
 		}
 	}
 
