@@ -40,7 +40,7 @@ public class Condition2 {
 
 		boolean intStatus = Machine.interrupt().disable();
 
-		//conditionLock.release();
+		// conditionLock.release();
 		waitQueue.add(KThread.currentThread());
 		conditionLock.release();
 
@@ -48,7 +48,7 @@ public class Condition2 {
 
 		conditionLock.acquire();
 		Machine.interrupt().restore(intStatus);
-		//conditionLock.acquire();
+		// conditionLock.acquire();
 	}
 
 	/**
@@ -128,7 +128,6 @@ public class Condition2 {
 			KThread ping = new KThread(new Interlocker());
 			ping.setName("ping");
 
-
 			KThread pong = new KThread(new Interlocker());
 			pong.setName("pong");
 
@@ -171,15 +170,15 @@ public class Condition2 {
 		final Lock lock = new Lock();
 		// final Condition empty = new Condition(lock);
 		final Condition2 empty = new Condition2(lock);
-		final LinkedList<Integer> list = new LinkedList<>();
-		KThread consumer = new KThread( new Runnable () {
-		public void run() {
+		final LinkedList<Integer> list = new LinkedList<Integer>();
+		KThread consumer = new KThread(new Runnable() {
+			public void run() {
 				lock.acquire();
-				while(list.isEmpty()){
+				while (list.isEmpty()) {
 					empty.sleep();
 				}
 				Lib.assertTrue(list.size() == 5, "List should have 5 values.");
-				while(!list.isEmpty()) {
+				while (!list.isEmpty()) {
 					// context swith for the fun of it
 					KThread.currentThread().yield();
 					System.out.println("Removed " + list.removeFirst());
@@ -187,8 +186,8 @@ public class Condition2 {
 				lock.release();
 			}
 		});
-		
-		KThread producer = new KThread( new Runnable () {
+
+		KThread producer = new KThread(new Runnable() {
 			public void run() {
 				lock.acquire();
 				for (int i = 0; i < 5; i++) {
@@ -213,7 +212,7 @@ public class Condition2 {
 		// same effect, but is a kludgy way to do it.
 		consumer.join();
 		producer.join();
-		//for (int i = 0; i < 50; i++) { KThread.currentThread().yield(); }
+		// for (int i = 0; i < 50; i++) { KThread.currentThread().yield(); }
 	}
-	
+
 }

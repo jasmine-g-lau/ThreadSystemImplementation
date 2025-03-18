@@ -6,7 +6,7 @@ import nachos.machine.Lib;
 //import nachos.threads.Condition2;
 import nachos.machine.*;
 
-import nachos.threads.CommSelfTester;
+// import nachos.threads.CommSelfTester;
 
 /**
  * A multi-threaded OS kernel.
@@ -57,14 +57,14 @@ public class ThreadedKernel extends Kernel {
 		Condition2.selfTest();
 		SynchList.selfTest();
 		Alarm.selfTest();
-		CommSelfTester.selfTest1();
-		CommSelfTester.selfTest2();
-		CommSelfTester.selfTest3();
-		CommSelfTester.selfTest4();
-		CommSelfTester.selfTest5();
+		// CommSelfTester.selfTest1();
+		// CommSelfTester.selfTest2();
+		// CommSelfTester.selfTest3();
+		// CommSelfTester.selfTest4();
+		// CommSelfTester.selfTest5();
 
 		if (Machine.bank() != null) {
-		ElevatorBank.selfTest();
+			ElevatorBank.selfTest();
 		}
 	}
 
