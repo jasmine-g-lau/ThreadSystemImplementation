@@ -12,8 +12,6 @@ public class Boat {
 
         System.out.println("\n ***Testing Boats with only 2 children***");
         begin(1, 100, grader);
-
-
     }
 
     static int boatOccupancy = 0;
@@ -36,8 +34,6 @@ public class Boat {
         OAHU,
         MOLOKAI
     }
-
-    static Location boatLocation = Location.OAHU;
 
 
     public static void begin(int adults, int children, BoatGrader grader) {
