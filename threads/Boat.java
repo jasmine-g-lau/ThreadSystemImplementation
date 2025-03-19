@@ -4,177 +4,188 @@ import nachos.ag.BoatGrader;
 import nachos.machine.Machine;
 
 public class Boat {
-    static BoatGrader bg;
+
+    static BoatGrader boatGrader;
 
     public static void selfTest() {
-        BoatGrader b = new BoatGrader();
-
-        // System.out.println("\n ***Testing Boats with only 2 children***");
-        // begin(0, 2, b);
-
-        // System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
-        // begin(1, 2, b);
-
-        // System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
-        // begin(3, 3, b);
-
-        System.out.println("\n ***Testing Boats with 3 children, 100 adults***");
-        begin(3, 99, b);
+        BoatGrader grader = new BoatGrader();
+        System.out.println("\n ***Testing Boats with only 2 children***");
+        startJourney(1, 6, grader);
     }
 
-    private static Lock lockBoat;
-    private static Lock lockPopulation;
+    
+    static int boatOccupancy = 0;
+    static int adultsOnOahu = 0;
+    static int childrenOnOahu = 0;
 
-    private static Condition2 boatControl; //Not using Condition
+    static boolean boatOnOahu = true;
+    static boolean allowAdult = false;
+    static boolean journeyCompleted = false;
 
-    private static int adultsOnOahu;
-    private static int childrenOnOahu;
-    private static int boatCap;
+    static Alarm syncAlarm;
 
+    static Lock oahuLock;
+    static Lock boatLock;
 
-    private static boolean boatOnOahu;
-    private static boolean done;
+    static Condition spawnCondition;
+    static Condition journeyCondition;
 
-    public static void begin(int adults, int children, BoatGrader b) {
-        bg = b;
+    public static void startJourney(int adults, int children, BoatGrader grader) {
+        boatGrader = grader;
+        oahuLock = new Lock();
+        boatLock = new Lock();
+        syncAlarm = new Alarm();
+        spawnCondition = new Condition(oahuLock);
+        journeyCondition = new Condition(boatLock);
 
-        lockPopulation = new Lock();
-        lockBoat = new Lock();
-        boatControl = new Condition2(lockBoat);
-        adultsOnOahu = 0;
-        childrenOnOahu = 0;
-        boatOnOahu = true;
-        done = false;
-        boatCap = 0;
-
-        Runnable AdultThread = new Runnable() {
+        Runnable adultRunnable = new Runnable() {
             public void run() {
-                AdultItinerary();
-            }
-        };
-        Runnable ChildThread = new Runnable() {
-            public void run() {
-                ChildItinerary();
+                adultJourney();
             }
         };
 
-        boolean intStatus = Machine.interrupt().disable();
+        Runnable childRunnable = new Runnable() {
+            public void run() {
+                childJourney();
+            }
+        };
+
+        boolean interruptStatus = Machine.interrupt().disable();
 
         for (int i = 0; i < adults; ++i) {
-            KThread thread = new KThread(AdultThread);
-            thread.setName("Adult thread " + (i + 1));
-            thread.fork();
+            KThread t = new KThread(adultRunnable);
+            t.setName("Adult thread " + (i + 1));
+            t.fork();
         }
 
         for (int i = 0; i < children; ++i) {
-            KThread thread = new KThread(ChildThread);
-            thread.setName("Child thread " + (i + 1));
-            thread.fork();
+            KThread t = new KThread(childRunnable);
+            t.setName("Child thread " + (i + 1));
+            t.fork();
         }
 
-        Machine.interrupt().restore(intStatus);
+        Machine.interrupt().restore(interruptStatus);
 
-        while (!done) {
+        while (!journeyCompleted) {
             KThread.yield();
         }
-
+        System.out.println();
         System.out.println("All adults and children have successfully crossed to Molokai!");
         System.out.println("Final State:");
         System.out.println("Adults on Oahu: " + adultsOnOahu);       // Output final counts
         System.out.println("Children on Oahu: " + childrenOnOahu);     // Output final counts
     }
 
-
-
-    private static void AdultItinerary() {
-
-        lockPopulation.acquire();
+    static void adultJourney() {
+        boolean atOahu = true;
+        oahuLock.acquire();
         adultsOnOahu++;
-        lockPopulation.release();
+        spawnCondition.sleep();
+        oahuLock.release();
 
+        syncAlarm.waitUntil(100);
+        KThread.yield();
 
-        while (!done) {
-            lockBoat.acquire();
-
-            if (boatOnOahu && boatCap == 0 && childrenOnOahu < 2 && !done && adultsOnOahu != 0) {
-                bg.AdultRowToMolokai();
-
-                lockPopulation.acquire();
+        while (!journeyCompleted) {
+            boatLock.acquire();
+            if (canAdultRowToMolokai(atOahu)) {
+                boatGrader.AdultRowToMolokai();
+                oahuLock.acquire();
                 adultsOnOahu--;
-                lockPopulation.release();
+                oahuLock.release();
 
-                boatOnOahu = false;
-
-                if (adultsOnOahu == 0 && childrenOnOahu == 0) {
-                    done = true;
-                    boatControl.wakeAll();
+                if ((adultsOnOahu + childrenOnOahu) == 0) {
+                    journeyCompleted = true;
+                    journeyCondition.wakeAll();
                 }
-            } else if (!done) {
-                boatControl.sleep();
+
+                atOahu = false;
+                boatOnOahu = false;
+                allowAdult = false;
             }
-
-            lockBoat.release();
+            if (!journeyCompleted && !atOahu) {
+                journeyCondition.sleep();
+            }
+            boatLock.release();
         }
-
     }
 
-    private static void ChildItinerary() {
-        lockPopulation.acquire();
+    static void childJourney() {
+        boolean atOahu = true;
+        oahuLock.acquire();
         childrenOnOahu++;
-        lockPopulation.release();
+        oahuLock.release();
 
-        while (!done) {
-            lockBoat.acquire();
+        syncAlarm.waitUntil(100);
 
-            if (boatOnOahu && boatCap < 2 && childrenOnOahu > 0 && !done) {
-                boatCap++;
+        while (!journeyCompleted) {
+            boatLock.acquire();
+            if (canChildRowToMolokai(atOahu)) {
+                boardChildOntoBoat();
+                atOahu = false;
 
-                lockPopulation.acquire();
-                childrenOnOahu--;
-                lockPopulation.release();
-
-                if ((adultsOnOahu == 0 && childrenOnOahu == 0) || boatCap == 2) {
-                    bg.ChildRowToMolokai();
-                    if (boatCap == 2) {
-                        bg.ChildRideToMolokai();
+                if ((adultsOnOahu + childrenOnOahu) == 0) {
+                    journeyCompleted = true;
+                    boatGrader.ChildRowToMolokai();
+                    if (boatOccupancy == 2) {
+                        boatGrader.ChildRideToMolokai();
                     }
-                    boatCap = 0;
-                    boatOnOahu = false;
-                    if (adultsOnOahu == 0 && childrenOnOahu == 0) {
-                        done = true;
-                    }
-                    boatControl.wakeAll();
-                } else if (childrenOnOahu > 0 && boatCap == 1 && !boatOnOahu ) {
-                    bg.ChildRowToOahu();
-                    boatOnOahu = true;
-					boatCap = 0;
-                    lockPopulation.acquire();
-                    childrenOnOahu++;
-                    lockPopulation.release();
+                    resetBoatAtMolokai();
+                } else if (boatOccupancy == 2) {
+                    boatGrader.ChildRowToMolokai();
+                    boatGrader.ChildRideToMolokai();
+                    resetBoatAtMolokai();
+                } else if (childrenOnOahu == 0) {
+                    unboardChildFromBoat();
                 }
+            } else if (canChildRowToOahu(atOahu)) {
+                boatGrader.ChildRowToOahu();
+                atOahu = true;
 
-            } else if (!boatOnOahu && childrenOnOahu > 0 && boatCap == 0 && !done){
-                bg.ChildRowToOahu();
-                boatOnOahu = true;
-                lockPopulation.acquire();
+                oahuLock.acquire();
+                spawnCondition.wakeAll();
                 childrenOnOahu++;
-                lockPopulation.release();
+                oahuLock.release();
+
+                boatOnOahu = true;
+                allowAdult = true;
             }
-
-
-            lockBoat.release();
-            if (!done) {
+            boatLock.release();
+            if (!journeyCompleted) {
                 KThread.yield();
             }
         }
     }
 
+    private static boolean canAdultRowToMolokai(boolean atOahu) {
+        return boatOnOahu && atOahu && boatOccupancy == 0 && (allowAdult || childrenOnOahu == 0) && !journeyCompleted && childrenOnOahu < 2;
+    }
 
-    static void SampleItinerary() {
-        System.out.println("\n ***Everyone piles on the boat and goes to Molokai***");
-        bg.AdultRowToMolokai();
-        bg.ChildRideToMolokai();
-        bg.AdultRideToMolokai();
-        bg.ChildRideToMolokai();
+    private static boolean canChildRowToMolokai(boolean atOahu) {
+        return boatOnOahu && atOahu && boatOccupancy < 2 && !journeyCompleted && (allowAdult || childrenOnOahu > 0);
+    }
+
+    private static boolean canChildRowToOahu(boolean atOahu) {
+        return !boatOnOahu && !atOahu && boatOccupancy < 2 && !journeyCompleted;
+    }
+
+    private static void boardChildOntoBoat() {
+        boatOccupancy++;
+        oahuLock.acquire();
+        childrenOnOahu--;
+        oahuLock.release();
+    }
+
+    private static void unboardChildFromBoat() {
+        boatOccupancy--;
+        oahuLock.acquire();
+        childrenOnOahu++;
+        oahuLock.release();
+    }
+
+    private static void resetBoatAtMolokai() {
+        boatOccupancy = 0;
+        boatOnOahu = false;
+        journeyCondition.wakeAll();
     }
 }
