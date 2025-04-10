@@ -379,6 +379,27 @@ public class UserProcess {
 			syscallRead = 6, syscallWrite = 7, syscallClose = 8,
 			syscallUnlink = 9;
 
+
+	private int handleUnlink(int namePtr){
+
+		final int maxFileNameLength = 256;
+
+		String name = readVirtualMemoryString(namePtr, maxFileNameLength);
+		if(name == null || name.isEmpty()){
+			return -1;
+		}
+
+		Lib.debug(dbgProcess, "UserProcess.handleUnlink(\"" + name + "\")");
+
+		boolean success = ThreadedKernel.fileSystem.remove(name);
+		if (success) {
+			Lib.debug(dbgProcess, "\tremove succeeded");
+			return 0;
+		} else {
+			Lib.debug(dbgProcess, "\tremove failed");
+			return -1;
+		}
+	}
 	/**
 	 * Handle a syscall exception. Called by <tt>handleException()</tt>. The
 	 * <i>syscall</i> argument identifies which syscall the user executed:
@@ -446,6 +467,8 @@ public class UserProcess {
 			return handleHalt();
 		case syscallExit:
 			return handleExit(a0);
+		case syscallUnlink:
+			return handleUnlink(a0);
 
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
