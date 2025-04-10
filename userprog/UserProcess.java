@@ -409,7 +409,7 @@ public class UserProcess {
 	//handleCreat finish
 
 	//Ernesto's Open
-	private int open(int name){
+	private int handleOpen(int name){
 
 		int fileDescriptor = findAvailableFD();
 		String filename = readVirtualMemoryString(name, maxbyte);
