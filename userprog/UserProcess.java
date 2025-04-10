@@ -472,7 +472,21 @@ public class UserProcess {
 		return totalBytesWritten;
 	}
 	//handleWrite finish
+	private int handleClose(int fd) {
+	    if (fd < 0 || fd >= myFileSlots.length) {
+	        return -1;
+	    }
 
+	    OpenFile file = myFileSlots[fd];
+	    if (file == null) {
+	        return -1;
+	    }
+	
+	    file.close();
+	    myFileSlots[fd] = null;
+	
+	    return 0;
+	}
 	//Jasmine - handeUnlink start
 	private int handleUnlink(int namePtr){
 
@@ -577,6 +591,8 @@ public class UserProcess {
 				return handleWrite(a0, a1, a2); // write(int fd, char *buffer, int size);
 			case syscallExit:
 				return handleExit(a0);
+			case syscallClose:
+				return handleClose(a0);
 			case syscallUnlink:
 				return handleUnlink(a0);
 
