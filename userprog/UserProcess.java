@@ -528,6 +528,16 @@ public class UserProcess {
 		fileTable[fileDescriptor] = file;
 		return fileDescriptor;
 	}
+
+	public int findFreeFileDescriptor(){
+
+		for (int i = 0; i < maxfileTableValue; i++){
+			if (fileTable[i] == null){
+				return i;
+			}
+		}
+		return -1;
+	}
 	//OPEN FINISHED!
 	
 	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
