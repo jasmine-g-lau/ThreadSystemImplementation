@@ -373,6 +373,8 @@ public class UserProcess {
 		return 0;
 	}
 
+
+	//Brandon - handleWrite start
 	private int handleWrite(int fd, int bufferPtr, int size) {
 		// Guard checks
 		if (fd < 0 || fd >= myFileSlots.length || size < 0)
@@ -411,7 +413,9 @@ public class UserProcess {
 
 		return totalBytesWritten;
 	}
+	//handleWrite finish
 
+	//Jasmine - handeUnlink start
 	private int handleUnlink(int namePtr){
 
 		final int maxFileNameLength = 256;
@@ -432,6 +436,7 @@ public class UserProcess {
 			return -1;
 		}
 	}
+	//handleUnlink finish
 
 	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
 			syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
