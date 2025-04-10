@@ -500,6 +500,31 @@ public class UserProcess {
 	 * @param a3      the fourth syscall argument.
 	 * @return the value to be returned to the user.
 	 */
+	
+	//Ernesto's Open
+	private int open(int name){
+
+		int fileDescriptor = findFreeFileDescriptor();
+		String filename = readVirtualMemoryString(name, maxbyte);
+		OpenFile file = ThreadedKernel.fileSystem.open(filename, false);
+
+		if (fileDescriptor == -1){
+			return -1;
+		}
+
+		if (filename == null){
+			return -1;
+		}
+
+		if (file == null){
+			return -1;
+		}
+
+		fileTable[fileDescriptor] = file;
+		return fileDescriptor;
+	}
+	//OPEN FINISHED!
+	
 	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
 		switch (syscall) {
 			case syscallHalt:
