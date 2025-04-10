@@ -411,7 +411,7 @@ public class UserProcess {
 	//Ernesto's Open
 	private int open(int name){
 
-		int fileDescriptor = findFreeFileDescriptor();
+		int fileDescriptor = findAvailableFD();
 		String filename = readVirtualMemoryString(name, maxbyte);
 		OpenFile file = ThreadedKernel.fileSystem.open(filename, false);
 
