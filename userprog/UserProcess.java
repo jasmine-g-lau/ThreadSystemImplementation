@@ -23,6 +23,8 @@ public class UserProcess {
 	/**
 	 * Allocate a new process.
 	 */
+	private OpenFile[] myFileSlots = new OpenFile[16];
+	
 	public UserProcess() {
 		int numPhysPages = Machine.processor().getNumPhysPages();
 		pageTable = new TranslationEntry[numPhysPages];
@@ -372,7 +374,63 @@ public class UserProcess {
 
 		return 0;
 	}
+	
+	//Liz - handleCreat start
+	private int handleCreat(int myAddr){
+		String name = readVirtualMemoryString(myAddr, 256);
 
+		if (name == null || name.length() == 0){
+			return -1;
+		}
+
+		OpenFile file = ThreadedKernel.fileSystem.open(name, true);
+		if (file == null){
+			return -1;
+		}
+
+		int fd = findAvailableFD();
+		if(fd == -1){
+			file.close();
+			return -1;
+		}
+
+		myFileSlots[fd] = file;
+		return fd;
+	}
+
+	private int findAvailableFD(){
+		for(int i = 0; i < 16; i++){
+			if(myFileSlots[i] == null){
+				return i;
+			}
+		}
+		return -1;
+	}
+	//handleCreat finish
+
+	//Ernesto's Open
+	private int open(int name){
+
+		int fileDescriptor = findFreeFileDescriptor();
+		String filename = readVirtualMemoryString(name, maxbyte);
+		OpenFile file = ThreadedKernel.fileSystem.open(filename, false);
+
+		if (fileDescriptor == -1){
+			return -1;
+		}
+
+		if (filename == null){
+			return -1;
+		}
+
+		if (file == null){
+			return -1;
+		}
+
+		fileTable[fileDescriptor] = file;
+		return fileDescriptor;
+	}
+	//OPEN FINISHED!
 
 	//Brandon - handleWrite start
 	private int handleWrite(int fd, int bufferPtr, int size) {
@@ -506,44 +564,15 @@ public class UserProcess {
 	 * @return the value to be returned to the user.
 	 */
 	
-	//Ernesto's Open
-	private int open(int name){
-
-		int fileDescriptor = findFreeFileDescriptor(); //Need to make still
-		String filename = readVirtualMemoryString(name, maxbyte); //Need to make still
-		OpenFile file = ThreadedKernel.fileSystem.open(filename, false);
-
-		if (fileDescriptor == -1){
-			return -1;
-		}
-
-		if (filename == null){
-			return -1;
-		}
-
-		if (file == null){
-			return -1;
-		}
-
-		fileTable[fileDescriptor] = file;
-		return fileDescriptor;
-	}
-
-	public int findFreeFileDescriptor(){
-
-		for (int i = 0; i < maxfileTableValue; i++){
-			if (fileTable[i] == null){
-				return i;
-			}
-		}
-		return -1;
-	}
-	//OPEN FINISHED!
 	
 	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
 		switch (syscall) {
 			case syscallHalt:
 				return handleHalt();
+			case syscallCreate:
+				return handleCreat(a0);
+			case syscallOpen:
+				return handleOpen(a0);
 			case syscallWrite:
 				return handleWrite(a0, a1, a2); // write(int fd, char *buffer, int size);
 			case syscallExit:
