@@ -186,14 +186,12 @@ public class UserProcess {
 	 * @return the number of bytes successfully transferred.
 	 */
 	public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
-		Lib.assertTrue(offset >= 0 && length >= 0
-				&& offset + length <= data.length);
+		Lib.assertTrue(offset >= 0 && length >= 0 && offset + length <= data.length);
 
 		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr >= memory.length)
-			return 0;
+		if (vaddr < 0 || vaddr >= memory.length) return 0;
 
 		int amount = Math.min(length, memory.length - vaddr);
 		System.arraycopy(data, offset, memory, vaddr, amount);
@@ -410,7 +408,6 @@ public class UserProcess {
 
 	//Ernesto's Open
 	private int handleOpen(int name){
-
 		int fileDescriptor = findAvailableFD();
 		String filename = readVirtualMemoryString(name, maxbyte);
 		OpenFile file = ThreadedKernel.fileSystem.open(filename, false);
@@ -427,11 +424,29 @@ public class UserProcess {
 			return -1;
 		}
 
-		fileTable[fileDescriptor] = file;
+		myFileSlots[fileDescriptor] = file;
 		return fileDescriptor;
 	}
 	//OPEN FINISHED!
 
+    //Raghav - handleRead start
+    //fd - file descriptor index, bufferPtr - virtual address to store read data, size - num bytes to be read
+    private int handleRead(int fd, int bufferPtr, int size){
+        if (fd < 0 || fd >= myFileSlots.length || myFileSlots[fd] == null) return -1;   // checks valid fd		
+		if (bufferPtr < 0 || bufferPtr >= numPages * pageSize) return -1;               // checks valid virt. address
+		if (size <= 0 || bufferPtr + size > numPages * pageSize) return -1;             // checks valid read size
+        
+        OpenFile file = myFileSlots[fd];                                                // retrieve file
+        byte[] buffer = new byte[size];                                                 // temp buffer to store data
+
+        int bytesRead = file.read(buffer, 0, size);                              // reads "size" bytes from file into buffer
+        if (bytesRead < 0) return -1;                                                   // problem
+   
+        int bytesCopied = writeVirtualMemory(bufferPtr, buffer, 0, bytesRead);   // copy buffer to virtual memory
+        return bytesCopied;
+    }
+    //handleRead finish
+   
 	//Brandon - handleWrite start
 	private int handleWrite(int fd, int bufferPtr, int size) {
 		// Guard checks
@@ -489,7 +504,6 @@ public class UserProcess {
 	}
 	//Jasmine - handeUnlink start
 	private int handleUnlink(int namePtr){
-
 		final int maxFileNameLength = 256;
 	
 		String name = readVirtualMemoryString(namePtr, maxFileNameLength);
@@ -511,9 +525,9 @@ public class UserProcess {
 	//handleUnlink finish
 
 	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
-			syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
-			syscallRead = 6, syscallWrite = 7, syscallClose = 8,
-			syscallUnlink = 9;
+        syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
+        syscallRead = 6, syscallWrite = 7, syscallClose = 8,
+        syscallUnlink = 9;
 
 	
 	/**
