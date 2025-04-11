@@ -432,15 +432,15 @@ public class UserProcess {
     //Raghav - handleRead start
     //fd - file descriptor index, bufferPtr - virtual address to store read data, size - num bytes to be read
     private int handleRead(int fd, int bufferPtr, int size){
-        if (fd < 0 || fd >= myFileSlots.length || myFileSlots[fd] == null) return -1;   // checks valid fd		
-		if (bufferPtr < 0 || bufferPtr >= numPages * pageSize) return -1;               // checks valid virt. address
-		if (size <= 0 || bufferPtr + size > numPages * pageSize) return -1;             // checks valid read size
+        if (fd < 0 || fd >= myFileSlots.length || myFileSlots[fd] == null) return -1;   // checks valid fd (bounds & existence)
+		if (bufferPtr < 0 || bufferPtr >= numPages * pageSize) return -1;               // checks valid virt. address (bounds)
+		if (size <= 0 || bufferPtr + size > numPages * pageSize) return -1;             // checks valid read size (bounds)
         
         OpenFile file = myFileSlots[fd];                                                // retrieve file
         byte[] buffer = new byte[size];                                                 // temp buffer to store data
 
         int bytesRead = file.read(buffer, 0, size);                              // reads "size" bytes from file into buffer
-        if (bytesRead < 0) return -1;                                                   // problem
+        if (bytesRead < 0) return -1;                                                   // checks for read error
    
         int bytesCopied = writeVirtualMemory(bufferPtr, buffer, 0, bytesRead);   // copy buffer to virtual memory
         return bytesCopied;
