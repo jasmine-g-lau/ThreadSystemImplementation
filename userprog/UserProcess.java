@@ -24,7 +24,7 @@ public class UserProcess {
 	 * Allocate a new process.
 	 */
 	private OpenFile[] myFileSlots = new OpenFile[16];
-	
+
 	public UserProcess() {
 		int numPhysPages = Machine.processor().getNumPhysPages();
 		pageTable = new TranslationEntry[numPhysPages];
@@ -191,7 +191,8 @@ public class UserProcess {
 		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr >= memory.length) return 0;
+		if (vaddr < 0 || vaddr >= memory.length)
+			return 0;
 
 		int amount = Math.min(length, memory.length - vaddr);
 		System.arraycopy(data, offset, memory, vaddr, amount);
@@ -372,22 +373,22 @@ public class UserProcess {
 
 		return 0;
 	}
-	
-	//Liz - handleCreat start
-	private int handleCreat(int myAddr){
+
+	// Liz - handleCreat start
+	private int handleCreat(int myAddr) {
 		String name = readVirtualMemoryString(myAddr, 256);
 
-		if (name == null || name.length() == 0){
+		if (name == null || name.length() == 0) {
 			return -1;
 		}
 
 		OpenFile file = ThreadedKernel.fileSystem.open(name, true);
-		if (file == null){
+		if (file == null) {
 			return -1;
 		}
 
 		int fd = findAvailableFD();
-		if(fd == -1){
+		if (fd == -1) {
 			file.close();
 			return -1;
 		}
@@ -396,58 +397,63 @@ public class UserProcess {
 		return fd;
 	}
 
-	private int findAvailableFD(){
-		for(int i = 0; i < 16; i++){
-			if(myFileSlots[i] == null){
+	private int findAvailableFD() {
+		for (int i = 0; i < 16; i++) {
+			if (myFileSlots[i] == null) {
 				return i;
 			}
 		}
 		return -1;
 	}
-	//handleCreat finish
+	// handleCreat finish
 
-	//Ernesto's Open
-	private int handleOpen(int name){
+	// Ernesto's Open
+	private int handleOpen(int name) {
 		int fileDescriptor = findAvailableFD();
 		String filename = readVirtualMemoryString(name, 256);
 		OpenFile file = ThreadedKernel.fileSystem.open(filename, false);
 
-		if (fileDescriptor == -1){
+		if (fileDescriptor == -1) {
 			return -1;
 		}
 
-		if (filename == null){
+		if (filename == null) {
 			return -1;
 		}
 
-		if (file == null){
+		if (file == null) {
 			return -1;
 		}
 
 		myFileSlots[fileDescriptor] = file;
 		return fileDescriptor;
 	}
-	//OPEN FINISHED!
+	// OPEN FINISHED!
 
-    //Raghav - handleRead start
-    //fd - file descriptor index, bufferPtr - virtual address to store read data, size - num bytes to be read
-    private int handleRead(int fd, int bufferPtr, int size){
-        if (fd < 0 || fd >= myFileSlots.length || myFileSlots[fd] == null) return -1;   // checks valid fd (bounds & existence)
-		if (bufferPtr < 0 || bufferPtr >= numPages * pageSize) return -1;               // checks valid virt. address (bounds)
-		if (size <= 0 || bufferPtr + size > numPages * pageSize) return -1;             // checks valid read size (bounds)
-        
-        OpenFile file = myFileSlots[fd];                                                // retrieve file
-        byte[] buffer = new byte[size];                                                 // temp buffer to store data
+	// Raghav - handleRead start
+	// fd - file descriptor index, bufferPtr - virtual address to store read data,
+	// size - num bytes to be read
+	private int handleRead(int fd, int bufferPtr, int size) {
+		if (fd < 0 || fd >= myFileSlots.length || myFileSlots[fd] == null)
+			return -1; // checks valid fd (bounds & existence)
+		if (bufferPtr < 0 || bufferPtr >= numPages * pageSize)
+			return -1; // checks valid virt. address (bounds)
+		if (size <= 0 || bufferPtr + size > numPages * pageSize)
+			return -1; // checks valid read size (bounds)
 
-        int bytesRead = file.read(buffer, 0, size);                              // reads "size" bytes from file into buffer
-        if (bytesRead < 0) return -1;                                                   // checks for read error
-   
-        int bytesCopied = writeVirtualMemory(bufferPtr, buffer, 0, bytesRead);   // copy buffer to virtual memory
-        return bytesCopied;
-    }
-    //handleRead finish
-   
-	//Brandon - handleWrite start
+		OpenFile file = myFileSlots[fd]; // retrieve file
+		byte[] buffer = new byte[size]; // temp buffer to store data
+
+		int bytesRead = file.read(buffer, 0, size); // reads "size" bytes from file into buffer
+		if (bytesRead < 0)
+			return -1; // checks for read error
+
+		int bytesCopied = writeVirtualMemory(bufferPtr, buffer, 0, bytesRead); // copy buffer to virtual memory
+		return bytesCopied;
+	}
+	// handleRead finish
+
+	// Brandon - handleWrite start
 	private int handleWrite(int fd, int bufferPtr, int size) {
 		// Guard checks
 		if (fd < 0 || fd >= myFileSlots.length || size < 0)
@@ -474,43 +480,47 @@ public class UserProcess {
 			if (readBytes <= 0)
 				break;
 
-			int writtenBytes = file.write(pageBuffer, 0, readBytes);
-			if (writtenBytes < 0)
-				return -1;
+			int writtenSoFar = 0;
+			while (writtenSoFar < readBytes) {
+				// Prevent partial writes
+				int justWritten = file.write(pageBuffer, writtenSoFar, readBytes - writtenSoFar);
+				if (justWritten <= 0)
+					return -1;
+				writtenSoFar += justWritten;
+			}
 
-			totalBytesWritten += writtenBytes;
-
-			if (writtenBytes < readBytes) // Partial write
-				break;
+			totalBytesWritten += writtenSoFar;
 		}
 
 		return totalBytesWritten;
 	}
-	//handleWrite finish
-	private int handleClose(int fd) {
-	    if (fd < 0 || fd >= myFileSlots.length) {
-	        return -1;
-	    }
 
-	    OpenFile file = myFileSlots[fd];
-	    if (file == null) {
-	        return -1;
-	    }
-	
-	    file.close();
-	    myFileSlots[fd] = null;
-	
-	    return 0;
-	}
-	//Jasmine - handeUnlink start
-	private int handleUnlink(int namePtr){
-		final int maxFileNameLength = 256;
-	
-		String name = readVirtualMemoryString(namePtr, maxFileNameLength);
-		if(name == null || name.isEmpty()){
+	// handleWrite finish
+	private int handleClose(int fd) {
+		if (fd < 0 || fd >= myFileSlots.length) {
 			return -1;
 		}
-	
+
+		OpenFile file = myFileSlots[fd];
+		if (file == null) {
+			return -1;
+		}
+
+		file.close();
+		myFileSlots[fd] = null;
+
+		return 0;
+	}
+
+	// Jasmine - handeUnlink start
+	private int handleUnlink(int namePtr) {
+		final int maxFileNameLength = 256;
+
+		String name = readVirtualMemoryString(namePtr, maxFileNameLength);
+		if (name == null || name.isEmpty()) {
+			return -1;
+		}
+
 		Lib.debug(dbgProcess, "UserProcess.handleUnlink(\"" + name + "\")");
 
 		boolean success = ThreadedKernel.fileSystem.remove(name);
@@ -522,14 +532,13 @@ public class UserProcess {
 			return -1;
 		}
 	}
-	//handleUnlink finish
+	// handleUnlink finish
 
 	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
-        syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
-        syscallRead = 6, syscallWrite = 7, syscallClose = 8,
-        syscallUnlink = 9;
+			syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
+			syscallRead = 6, syscallWrite = 7, syscallClose = 8,
+			syscallUnlink = 9;
 
-	
 	/**
 	 * Handle a syscall exception. Called by <tt>handleException()</tt>. The
 	 * <i>syscall</i> argument identifies which syscall the user executed:
@@ -591,9 +600,13 @@ public class UserProcess {
 	 * @param a3      the fourth syscall argument.
 	 * @return the value to be returned to the user.
 	 */
-	
-	
+
 	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
+		// syscallHalt = 0, syscallExit = 1, syscallExec = 2,
+		// syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
+		// syscallRead = 6, syscallWrite = 7, syscallClose = 8,
+		// syscallUnlink = 9;
+
 		switch (syscall) {
 			case syscallHalt:
 				return handleHalt();
@@ -601,6 +614,8 @@ public class UserProcess {
 				return handleCreat(a0);
 			case syscallOpen:
 				return handleOpen(a0);
+			case syscallRead:
+				return handleRead(a0, a1, a2);
 			case syscallWrite:
 				return handleWrite(a0, a1, a2); // write(int fd, char *buffer, int size);
 			case syscallExit:
