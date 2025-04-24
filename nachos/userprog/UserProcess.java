@@ -24,6 +24,9 @@ public class UserProcess {
 	private OpenFile[] myFileSlots = new OpenFile[16];
 
 	public UserProcess() {
+		myFileSlots[0] = UserKernel.console.openForReading();
+		myFileSlots[1] = UserKernel.console.openForWriting();
+
 		int numPhysPages = Machine.processor().getNumPhysPages();
 		pageTable = new TranslationEntry[numPhysPages];
 		for (int i = 0; i < numPhysPages; i++)
@@ -428,33 +431,60 @@ public class UserProcess {
 	}
 	// OPEN FINISHED!
 
+	private int handleRead(int fd, int bufferPtr, int size) {
+		if (fd < 0 || fd >= myFileSlots.length || myFileSlots[fd] == null)
+			return -1; // checks valid fd (bounds & existence)
+		if (bufferPtr < 0 || bufferPtr >= numPages * pageSize)
+			return -1; // checks valid virt. address (bounds)
+		if (size <= 0 || bufferPtr + size > numPages * pageSize)
+			return -1; // checks valid read size (bounds)
+
+		OpenFile file = myFileSlots[fd]; // retrieve file
+		byte[] buffer = new byte[size]; // temp buffer to store data
+
+		int bytesRead = file.read(buffer, 0, size); // reads "size" bytes from file into buffer
+		if (bytesRead < 0)
+			return -1; // checks for read error
+
+		int bytesCopied = writeVirtualMemory(bufferPtr, buffer, 0, bytesRead); // copy buffer to virtual memory
+		return bytesCopied;
+	}
+
 	// Raghav - handleRead start
 	// fd - file descriptor index, bufferPtr - virtual address to store read data,
 	// size - num bytes to be read
-	private int handleRead(int fd, int bufferPtr, int size){
-        if (fd < 0 || fd >= myFileSlots.length || myFileSlots[fd] == null) return -1;   // checks valid fd (bounds & existence)
-		if (bufferPtr < 0 || bufferPtr >= numPages * pageSize) return -1;               // checks valid virt. address (bounds)
-		if (size <= 0 || bufferPtr + size > numPages * pageSize) return -1;             // checks valid read size (bounds)
-        
-        byte[] buffer = new byte[size];                                                 // temp buffer to store data
-        int bytesRead = 0;                                                              // reads "size" bytes from file into buffer
+	// private int handleRead(int fd, int bufferPtr, int size) {
+	// if (fd < 0 || fd >= myFileSlots.length || myFileSlots[fd] == null)
+	// return -1; // checks valid fd (bounds & existence)
+	// if (bufferPtr < 0 || bufferPtr >= numPages * pageSize)
+	// return -1; // checks valid virt. address (bounds)
+	// if (size <= 0 || bufferPtr + size > numPages * pageSize)
+	// return -1; // checks valid read size (bounds)
 
-        if(fd == 0) {                                                                   // reading from console
-            while (bytesRead < size) {
-                int cB = UserKernel.console.readByte(true);                       // read byte from console
-                if (cB == -1) break;                                                    // eof reached -> stop reading
-                buffer[bytesRead] = (byte) cB;                                          // store byte from console in buffer
-                if ((byte) cB == '\n') break;
-            }
-        } else {                                                                        // reading from file
-            OpenFile file = myFileSlots[fd];                                            // retrieve file
-            bytesRead = file.read(buffer, 0, size);                              // reads "size" bytes from file into buffer
-            if(bytesRead < 0) return -1;                                                // checks for read error
-        }
+	// byte[] buffer = new byte[size]; // temp buffer to store data
+	// int bytesRead = 0; // reads "size" bytes from file into buffer
 
-        int bytesCopied = writeVirtualMemory(bufferPtr, buffer, 0, bytesRead);   // copy buffer to virtual memory
-        return bytesCopied;
-    }
+	// if (fd == 0) { // reading from console
+	// while (bytesRead < size) {
+	// int cB = UserKernel.console.readByte(true); // read byte from console
+	// if (cB == -1)
+	// break; // eof reached -> stop reading
+	// buffer[bytesRead] = (byte) cB; // store byte from console in buffer
+	// if ((byte) cB == '\n')
+	// break;
+	// }
+	// } else { // reading from file
+	// OpenFile file = myFileSlots[fd]; // retrieve file
+	// bytesRead = file.read(buffer, 0, size); // reads "size" bytes from file into
+	// buffer
+	// if (bytesRead < 0)
+	// return -1; // checks for read error
+	// }
+
+	// int bytesCopied = writeVirtualMemory(bufferPtr, buffer, 0, bytesRead); //
+	// copy buffer to virtual memory
+	// return bytesCopied;
+	// }
 	// handleRead finish
 
 	// Brandon - handleWrite start
