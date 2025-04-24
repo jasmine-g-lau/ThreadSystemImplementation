@@ -1,4 +1,4 @@
 *.o
-proj0/nachos
-proj1/nachos
-proj2/nachos
+nachos/proj0/nachos
+nachos/proj1/nachos
+nachos/proj2/nachos
