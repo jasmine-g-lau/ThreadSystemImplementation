@@ -1,11 +1,9 @@
 package nachos.userprog;
 
+import java.io.EOFException;
 import nachos.machine.*;
 import nachos.threads.*;
-import nachos.userprog.*;
 import nachos.vm.*;
-
-import java.io.EOFException;
 
 /**
  * Encapsulates the state of a user process that is not contained in its user
@@ -442,10 +440,11 @@ public class UserProcess {
         int bytesRead = 0;                                                              // reads "size" bytes from file into buffer
 
         if(fd == 0) {                                                                   // reading from console
-            for (bytesRead = 0; bytesRead < size; bytesRead++) {
+            while (bytesRead < size) {
                 int cB = UserKernel.console.readByte(true);                       // read byte from console
                 if (cB == -1) break;                                                    // eof reached -> stop reading
                 buffer[bytesRead] = (byte) cB;                                          // store byte from console in buffer
+                if ((byte) cB == '\n') break;
             }
         } else {                                                                        // reading from file
             OpenFile file = myFileSlots[fd];                                            // retrieve file
