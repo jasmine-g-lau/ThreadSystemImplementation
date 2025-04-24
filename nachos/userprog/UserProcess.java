@@ -449,7 +449,7 @@ public class UserProcess {
         } else {                                                                        // reading from file
             OpenFile file = myFileSlots[fd];                                            // retrieve file
             bytesRead = file.read(buffer, 0, size);                              // reads "size" bytes from file into buffer
-            if(bytesRead < 0) return -1;                                                // checks for read error
+            if(bytesRead <= 0) return 0;                                                // checks for read error
         }
 
         int bytesCopied = writeVirtualMemory(bufferPtr, buffer, 0, bytesRead);   // copy buffer to virtual memory
